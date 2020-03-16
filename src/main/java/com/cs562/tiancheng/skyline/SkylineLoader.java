@@ -3,22 +3,34 @@ package com.cs562.tiancheng.skyline;
 import com.github.davidmoten.rtree.*;
 import com.github.davidmoten.rtree.geometry.Geometries;
 import com.github.davidmoten.rtree.geometry.Point;
+import rx.Observable;
+import rx.functions.Action1;
+import rx.functions.Func0;
+import rx.functions.Func1;
+import rx.observables.StringObservable;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.zip.GZIPInputStream;
+
+
 
 public class SkylineLoader {
+    private final static Precision precision = Precision.DOUBLE;
 
     private RTree<Object, Point> tree = RTree.star().create();
 
     public RTree<Object, Point> getTree() {
         return tree;
+    }
+
+    public void setInputList(List<Entry<Object, Point>> inputList) {
+        this.inputList = inputList;
     }
 
     public void setTree(RTree<Object, Point> tree) {
@@ -32,33 +44,64 @@ public class SkylineLoader {
     }
 
 
+
+    public static Observable<Entry<Object, Point>> entries(final Precision precision) {
+        Observable<String> source = Observable.using(new Func0<InputStream>() {
+            @Override
+            public InputStream call() {
+                try {
+                    InputStream inputStream = new GZIPInputStream(SkylineLoader.class
+                            .getResourceAsStream("/greek-earthquakes-1964-2000.txt.gz"));
+                    return new GZIPInputStream(SkylineLoader.class
+                            .getResourceAsStream("/greek-earthquakes-1964-2000.txt.gz"));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }, new Func1<InputStream, Observable<String>>() {
+            @Override
+            public Observable<String> call(InputStream is) {
+                return StringObservable.from(new InputStreamReader(is));
+            }
+        }, new Action1<InputStream>() {
+            @Override
+            public void call(InputStream is) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        return StringObservable.split(source, "\n")
+                .flatMap(new Func1<String, Observable<Entry<Object, Point>>>() {
+
+                    @Override
+                    public Observable<Entry<Object, Point>> call(String line) {
+                        if (line.trim().length() > 0) {
+                            String[] items = line.split(" ");
+                            double lat = Double.parseDouble(items[0]);
+                            double lon = Double.parseDouble(items[1]);
+                            Entry<Object, Point> entry;
+                            if (precision == Precision.DOUBLE)
+                                entry = Entries.entry(new Object(), Geometries.point(lat, lon));
+                            else
+                                entry = Entries.entry(new Object(),
+                                        Geometries.point((float) lat, (float) lon));
+                            return Observable.just(entry);
+                        } else
+                            return Observable.empty();
+                    }
+                });
+    }
+
     /**
      * Reading in data from txt file
      */
-    public void readIn(){
-        File file = new File("/Users/tianchengzhu/Downloads/greek-earthquakes-1964-2000.txt");
-
-        BufferedReader br = null;
-        try {
-            br = new BufferedReader(new FileReader(file));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            String st;
-            Entry<Object, Point> entry;
-            while ((st = br.readLine()) != null) {
-                String[] strings = new String[2];
-                strings = st.split(" ");
-                double x = Double.parseDouble(strings[0]);
-                double y = Double.parseDouble(strings[1]);
-                entry = Entries.entry(new Object(), Geometries.point(x, y));
-                inputList.add(entry);
-            }
-        }catch (Exception e){
-
-        }
+    static List<Entry<Object, Point>> entriesList(Precision precision) {
+        List<Entry<Object, Point>> result = entries(precision).toList().toBlocking().single();
+        System.out.println("loaded greek earthquakes into list");
+        return result;
     }
 
     /**
@@ -189,15 +232,16 @@ public class SkylineLoader {
     }
 
     public static void main(String[] args) {
+
+
         SkylineLoader skylineLoader;
         List<Entry<Object, Point>> list;
 
         skylineLoader = new SkylineLoader();
-        skylineLoader.readIn();
+        skylineLoader.setInputList(SkylineLoader.entriesList(SkylineLoader.precision));
         skylineLoader.insertTree();
         list = skylineLoader.findSkylinePoints(skylineLoader.getTree());
         System.out.println("Number of Skyline Points: "+list.size());
-
         for(Entry<Object, Point> entry : list){
             System.out.println("X:"+entry.geometry().x() +", Y:"+ entry.geometry().y());
         }

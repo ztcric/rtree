@@ -1,17 +1,13 @@
 package com.cs562.tiancheng.skyline;
 
 import com.github.davidmoten.rtree.Entry;
-import com.github.davidmoten.rtree.Node;
-import com.github.davidmoten.rtree.Precision;
-import com.github.davidmoten.rtree.RTree;
 import com.github.davidmoten.rtree.geometry.Point;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.swing.border.EmptyBorder;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 public class SkylineLoaderTest {
     SkylineLoader skylineLoader;
@@ -19,7 +15,6 @@ public class SkylineLoaderTest {
     @Before
     public void setUp() throws Exception {
         skylineLoader = new SkylineLoader();
-        skylineLoader.readIn();
         skylineLoader.insertTree();
         list = skylineLoader.findSkylinePoints(skylineLoader.getTree());
     }
