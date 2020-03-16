@@ -8,7 +8,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
 
 public class SkylineLoader {
 
@@ -169,8 +172,6 @@ public class SkylineLoader {
         });
         return result;
     }
-
-
     /**
      * Check if the entry is outside of the dominance region.
      * @param entry
@@ -190,6 +191,7 @@ public class SkylineLoader {
     public static void main(String[] args) {
         SkylineLoader skylineLoader;
         List<Entry<Object, Point>> list;
+
         skylineLoader = new SkylineLoader();
         skylineLoader.readIn();
         skylineLoader.insertTree();
